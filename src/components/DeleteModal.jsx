@@ -1,4 +1,4 @@
-export default function DeleteModal({ isOpen, onClose }) {
+export default function DeleteModal({ isOpen, onClose, onConfirm, isDeleting = false }) {
   if (!isOpen) return null;
 
   return (
@@ -31,10 +31,12 @@ export default function DeleteModal({ isOpen, onClose }) {
             Cancel
           </button>
           <button 
-            className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent bg-error text-on-error font-label-md text-label-md rounded hover:bg-[#a31616] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error shadow-sm" 
+            className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent bg-error text-on-error font-label-md text-label-md rounded hover:bg-[#a31616] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error shadow-sm disabled:opacity-50" 
             type="button"
+            onClick={onConfirm}
+            disabled={isDeleting}
           >
-            Delete Product
+            {isDeleting ? 'Deleting...' : 'Delete Product'}
           </button>
         </div>
       </div>

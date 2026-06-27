@@ -1,4 +1,4 @@
-export default function ProductModal({ isOpen, onClose, product = null }) {
+export default function ProductModal({ isOpen, onClose, product = null, onSave, isSaving = false }) {
   if (!isOpen) return null;
 
   const isEditMode = !!product;
@@ -26,7 +26,22 @@ export default function ProductModal({ isOpen, onClose, product = null }) {
         
         {/* Modal Body (Form) */}
         <div className="px-lg py-lg overflow-y-auto flex-1">
-          <form className="grid grid-cols-1 md:grid-cols-2 gap-x-md gap-y-lg">
+          <form 
+            id="product-form"
+            className="grid grid-cols-1 md:grid-cols-2 gap-x-md gap-y-lg"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              onSave({
+                productName: formData.get('productName'),
+                category: formData.get('category'),
+                sku: formData.get('sku'),
+                price: parseFloat(formData.get('price')) || 0,
+                stock: parseInt(formData.get('quantity'), 10) || 0,
+                description: formData.get('description')
+              });
+            }}
+          >
             {/* Product Name (Full Width) */}
             <div className="col-span-1 md:col-span-2 space-y-sm">
               <label className="block font-label-md text-label-md text-on-surface-variant" htmlFor="productName">Product Name <span className="text-error">*</span></label>
@@ -37,7 +52,7 @@ export default function ProductModal({ isOpen, onClose, product = null }) {
                 placeholder="e.g. Ergonomic Office Chair" 
                 required 
                 type="text" 
-                defaultValue={product?.name || ''}
+                defaultValue={product?.productName || ''}
               />
             </div>
             
@@ -133,11 +148,15 @@ export default function ProductModal({ isOpen, onClose, product = null }) {
             Cancel
           </button>
           <button 
-            className="px-md py-sm font-label-md text-label-md text-on-primary bg-primary rounded shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-2 focus:ring-offset-surface-bright transition-colors flex items-center gap-xs" 
-            type="button"
+            form="product-form"
+            className="px-md py-sm font-label-md text-label-md text-on-primary bg-primary rounded shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-2 focus:ring-offset-surface-bright transition-colors flex items-center gap-xs disabled:opacity-50" 
+            type="submit"
+            disabled={isSaving}
           >
-            <span className="material-symbols-outlined text-[18px]" data-icon="save">save</span>
-            {isEditMode ? 'Save Changes' : 'Save Product'}
+            <span className="material-symbols-outlined text-[18px]" data-icon="save">
+              {isSaving ? 'sync' : 'save'}
+            </span>
+            {isSaving ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Save Product')}
           </button>
         </div>
       </div>
