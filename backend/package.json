@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.842.0",
-    "@aws-sdk/lib-dynamodb": "^3.842.0"
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
+    "hono": "^4.12.27"
   }
 }
