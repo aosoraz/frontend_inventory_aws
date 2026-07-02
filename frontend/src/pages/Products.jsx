@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import ProductModal from '../components/ProductModal';
 import DeleteModal from '../components/DeleteModal';
 import { useProducts } from '../hooks/useProducts';
+import { useSearch } from '../hooks/useSearch';
+import { formatRupiah } from '../utils/currency';
 
 export default function Products() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -11,6 +13,7 @@ export default function Products() {
   const [productToDelete, setProductToDelete] = useState(null);
 
   const { products, loading, error, fetchProducts, createProduct, updateProduct, deleteProduct } = useProducts();
+  const { query } = useSearch();
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -55,7 +58,16 @@ export default function Products() {
     }
   };
 
-  // Derived properties for status visualization
+  const filteredProducts = products.filter((p) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      p.productName?.toLowerCase().includes(q) ||
+      p.category?.toLowerCase().includes(q) ||
+      p.description?.toLowerCase().includes(q)
+    );
+  });
+
   const getStatusProps = (stock) => {
     if (stock > 10) return { status: 'Available', statusBg: 'bg-[#DCFCE7]', statusText: 'text-[#10B981]' };
     if (stock > 0) return { status: 'Low Stock', statusBg: 'bg-[#FEF9C3]', statusText: 'text-[#D97706]' };
@@ -68,7 +80,7 @@ export default function Products() {
         {/* Page Header & Actions */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-lg gap-md">
           <h2 className="font-h1 text-h1 text-on-surface">Products</h2>
-          <div className="flex items-center space-x-sm">
+          <div className="flex items-center gap-sm">
             <div className="relative">
               <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" style={{ fontSize: '18px' }}>filter_list</span>
               <select className="appearance-none bg-surface-container-lowest border border-outline-variant text-on-surface text-body-sm rounded-md pl-xl pr-lg py-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors cursor-pointer hover:bg-surface-container-low">
@@ -80,7 +92,7 @@ export default function Products() {
               <span className="material-symbols-outlined absolute right-sm top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" style={{ fontSize: '18px' }}>expand_more</span>
             </div>
             <button 
-              className="bg-[#2563EB] text-white font-label-md text-label-md px-md py-sm rounded-md flex items-center space-x-xs hover:bg-[#1D4ED8] transition-colors shadow-sm active:scale-95"
+              className="bg-[#2563EB] text-white font-label-md text-label-md px-md py-sm rounded-md flex items-center gap-xs hover:bg-[#1D4ED8] transition-colors shadow-sm active:scale-95"
               onClick={handleOpenAddModal}
             >
               <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
@@ -104,10 +116,10 @@ export default function Products() {
               <div className="flex items-center justify-center h-full min-h-[300px]">
                 <span className="material-symbols-outlined animate-spin text-primary text-4xl">progress_activity</span>
               </div>
-            ) : products.length === 0 ? (
+            ) : filteredProducts.length === 0 ? (
                <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-on-surface-variant">
                   <span className="material-symbols-outlined text-4xl mb-2">inventory_2</span>
-                  <p>No products found. Add some to get started.</p>
+                  <p>{query ? `No products matching "${query}".` : 'No products found. Click Add Product to create your first inventory item.'}</p>
                </div>
             ) : (
               <table className="w-full text-left border-collapse">
@@ -122,18 +134,18 @@ export default function Products() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant font-body-sm">
-                  {products.map((product) => {
+                  {filteredProducts.map((product) => {
                     const statusProps = getStatusProps(product.stock);
                     return (
                       <tr key={product.productId} className="hover:bg-[#F1F5F9] transition-colors group">
-                        <td className="py-md px-md flex items-center space-x-md">
+                        <td className="py-md px-md flex items-center gap-md">
                           <div className="w-10 h-10 rounded-md bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50 text-on-surface-variant">
                             <span className="material-symbols-outlined">inventory_2</span>
                           </div>
                           <span className="font-semibold text-on-surface">{product.productName}</span>
                         </td>
                         <td className="py-md px-md text-secondary capitalize">{product.category}</td>
-                        <td className="py-md px-md text-on-surface font-code text-code">${product.price?.toFixed(2)}</td>
+                        <td className="py-md px-md text-on-surface font-code text-code">{formatRupiah(product.price)}</td>
                         <td className="py-md px-md text-on-surface">{product.stock}</td>
                         <td className="py-md px-md">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full ${statusProps.statusBg} ${statusProps.statusText} font-label-md text-[10px] tracking-wide uppercase`}>
@@ -165,10 +177,10 @@ export default function Products() {
           </div>
 
           {/* Pagination */}
-          {!loading && products.length > 0 && (
+          {!loading && filteredProducts.length > 0 && (
             <div className="border-t border-outline-variant bg-surface-container-lowest px-md py-sm flex items-center justify-between">
-              <span className="font-body-sm text-secondary">Showing 1-{products.length} of {products.length} products</span>
-              <div className="flex items-center space-x-xs">
+              <span className="font-body-sm text-secondary">Showing {filteredProducts.length} of {products.length} products</span>
+              <div className="flex items-center gap-xs">
                 <button className="px-sm py-xs border border-outline-variant rounded bg-surface-container-lowest text-secondary font-label-md text-label-md hover:bg-surface-container-low transition-colors disabled:opacity-50" disabled>Prev</button>
                 <button className="w-8 h-8 flex items-center justify-center border border-primary bg-primary-fixed text-primary-fixed-dim rounded font-label-md text-label-md">1</button>
                 <button className="px-sm py-xs border border-outline-variant rounded bg-surface-container-lowest text-secondary font-label-md text-label-md hover:bg-surface-container-low transition-colors disabled:opacity-50" disabled>Next</button>

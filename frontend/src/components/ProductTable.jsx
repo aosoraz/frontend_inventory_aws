@@ -1,50 +1,61 @@
-export default function ProductTable() {
-  const activities = [
-    { id: 1, name: 'Logitech MX Master 3', action: 'Stock In', actionIcon: 'arrow_downward', actionColor: 'text-green-600', qty: '+50', date: 'Today, 10:42 AM', status: 'Completed', statusBg: 'bg-green-100', statusText: 'text-green-800' },
-    { id: 2, name: 'Ergonomic Chair Pro', action: 'Stock Out', actionIcon: 'arrow_upward', actionColor: 'text-tertiary-container', qty: '-12', date: 'Yesterday, 02:15 PM', status: 'Pending', statusBg: 'bg-yellow-100', statusText: 'text-yellow-800' },
-    { id: 3, name: 'Dell UltraSharp 27"', action: 'Stock In', actionIcon: 'arrow_downward', actionColor: 'text-green-600', qty: '+100', date: 'Oct 24, 09:00 AM', status: 'Completed', statusBg: 'bg-green-100', statusText: 'text-green-800' },
-    { id: 4, name: 'Keychron K2 Keyboard', action: 'Stock Out', actionIcon: 'arrow_upward', actionColor: 'text-tertiary-container', qty: '-5', date: 'Oct 23, 04:30 PM', status: 'Completed', statusBg: 'bg-green-100', statusText: 'text-green-800' },
-    { id: 5, name: 'Anker USB-C Hub', action: 'Stock Out', actionIcon: 'arrow_upward', actionColor: 'text-tertiary-container', qty: '-20', date: 'Oct 22, 11:20 AM', status: 'Completed', statusBg: 'bg-green-100', statusText: 'text-green-800' },
-  ];
+import { formatRupiah } from '../utils/currency';
+
+export default function ProductTable({ products = [], loading = false }) {
+  const recentProducts = [...products]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+    .slice(0, 5);
 
   return (
     <div className="lg:col-span-8 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0_1px_3px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col">
       <div className="p-lg border-b border-outline-variant/30 flex justify-between items-center bg-surface/50">
-        <h3 className="font-h3 text-h3 text-on-surface">Recent Activity</h3>
-        <button className="font-label-md text-label-md text-primary hover:text-primary-fixed-variant transition-colors">View All</button>
+        <h3 className="font-h3 text-h3 text-on-surface">Recent Products</h3>
       </div>
       <div className="overflow-x-auto flex-1">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-surface-container-low border-b border-outline-variant/30">
-            <tr>
-              <th className="font-label-md text-label-md text-on-surface-variant py-3 px-4 font-semibold">Product Name</th>
-              <th className="font-label-md text-label-md text-on-surface-variant py-3 px-4 font-semibold">Action</th>
-              <th className="font-label-md text-label-md text-on-surface-variant py-3 px-4 font-semibold text-right">Qty</th>
-              <th className="font-label-md text-label-md text-on-surface-variant py-3 px-4 font-semibold">Date</th>
-              <th className="font-label-md text-label-md text-on-surface-variant py-3 px-4 font-semibold">Status</th>
-            </tr>
-          </thead>
-          <tbody className="font-body-sm text-body-sm text-on-surface divide-y divide-outline-variant/20">
-            {activities.map((item) => (
-              <tr key={item.id} className="hover:bg-surface-container-low/50 transition-colors">
-                <td className="py-3 px-4 font-medium">{item.name}</td>
-                <td className="py-3 px-4">
-                  <span className={`flex items-center ${item.actionColor}`}>
-                    <span className="material-symbols-outlined text-sm mr-1" data-icon={item.actionIcon}>{item.actionIcon}</span>
-                    {item.action}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-right">{item.qty}</td>
-                <td className="py-3 px-4 text-on-surface-variant">{item.date}</td>
-                <td className="py-3 px-4">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-md ${item.statusBg} ${item.statusText} font-label-md text-[10px] uppercase`}>
-                    {item.status}
-                  </span>
-                </td>
+        {loading ? (
+          <div className="flex items-center justify-center p-8 text-on-surface-variant">
+            <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+          </div>
+        ) : recentProducts.length === 0 ? (
+          <div className="p-8 text-center text-on-surface-variant">
+            No products found.
+          </div>
+        ) : (
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-surface-container-low border-b border-outline-variant/30">
+              <tr>
+                <th className="font-label-md text-label-md text-on-surface-variant py-3 px-4 font-semibold">Product Name</th>
+                <th className="font-label-md text-label-md text-on-surface-variant py-3 px-4 font-semibold capitalize">Category</th>
+                <th className="font-label-md text-label-md text-on-surface-variant py-3 px-4 font-semibold text-right">Price</th>
+                <th className="font-label-md text-label-md text-on-surface-variant py-3 px-4 font-semibold text-right">Stock</th>
+                <th className="font-label-md text-label-md text-on-surface-variant py-3 px-4 font-semibold">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="font-body-sm text-body-sm text-on-surface divide-y divide-outline-variant/20">
+              {recentProducts.map((item) => {
+                const getStatusProps = (stock) => {
+                  if (stock > 10) return { status: 'Available', statusBg: 'bg-[#DCFCE7]', statusText: 'text-[#10B981]' };
+                  if (stock > 0) return { status: 'Low Stock', statusBg: 'bg-[#FEF9C3]', statusText: 'text-[#D97706]' };
+                  return { status: 'Out of Stock', statusBg: 'bg-[#FEE2E2]', statusText: 'text-[#EF4444]' };
+                };
+                const statusProps = getStatusProps(item.stock);
+                
+                return (
+                  <tr key={item.productId || Math.random()} className="hover:bg-surface-container-low/50 transition-colors">
+                    <td className="py-3 px-4 font-medium">{item.productName}</td>
+                    <td className="py-3 px-4 capitalize">{item.category}</td>
+                    <td className="py-3 px-4 text-right">{formatRupiah(item.price)}</td>
+                    <td className="py-3 px-4 text-right">{item.stock}</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-md ${statusProps.statusBg} ${statusProps.statusText} font-label-md text-[10px] uppercase`}>
+                        {statusProps.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

@@ -1,34 +1,64 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import DashboardCard from '../components/DashboardCard';
 import ProductTable from '../components/ProductTable';
+import { useProducts } from '../hooks/useProducts';
+import { useSearch } from '../hooks/useSearch';
 
 export default function Dashboard() {
+  const { products, loading, error, fetchProducts } = useProducts();
+  const { query } = useSearch();
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const filteredProducts = products.filter((p) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      p.productName?.toLowerCase().includes(q) ||
+      p.category?.toLowerCase().includes(q) ||
+      p.description?.toLowerCase().includes(q)
+    );
+  });
+
+  const totalProducts = filteredProducts.length;
+  const availableStock = filteredProducts.reduce((acc, curr) => curr.stock > 0 ? acc + curr.stock : acc, 0);
+  const lowStock = filteredProducts.filter(p => p.stock > 0 && p.stock <= 10).length;
+  const outOfStock = filteredProducts.filter(p => p.stock === 0).length;
+
   return (
     <div className="max-w-[var(--spacing-max-content-width)] mx-auto">
+      {/* Error State */}
+      {error && (
+        <div className="mb-lg p-md bg-error/10 border border-error/20 rounded-md text-error flex items-center gap-2">
+          <span className="material-symbols-outlined">error</span>
+          <span>{error}</span>
+        </div>
+      )}
+      
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md md:gap-lg mb-lg">
         <DashboardCard
           title="Total Products"
           icon="inventory"
-          value="1,240"
-          subText="12%"
-          subTextColor="text-green-600"
-          trendIcon="arrow_upward"
+          value={loading ? '-' : totalProducts}
+          subText="Items in catalog"
           iconBgColor="bg-primary-container/10"
           iconTextColor="text-primary"
         />
         <DashboardCard
           title="Available Stock"
           icon="check_circle"
-          value="982"
-          subText="items"
+          value={loading ? '-' : availableStock}
+          subText="Items available"
           iconBgColor="bg-green-100"
           iconTextColor="text-green-600"
         />
         <DashboardCard
           title="Low Stock"
           icon="warning"
-          value="18"
+          value={loading ? '-' : lowStock}
           subText="Needs restock"
           subTextColor="text-tertiary-container font-semibold"
           iconBgColor="bg-tertiary-container/10"
@@ -38,7 +68,7 @@ export default function Dashboard() {
         <DashboardCard
           title="Out of Stock"
           icon="error"
-          value="5"
+          value={loading ? '-' : outOfStock}
           subText="Critical"
           subTextColor="text-error font-semibold"
           iconBgColor="bg-error/10"
@@ -49,8 +79,8 @@ export default function Dashboard() {
 
       {/* Bento Grid for Table and Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-lg">
-        {/* Recent Activity Table */}
-        <ProductTable />
+        {/* Recent Activity Table (Now Recent Products) */}
+        <ProductTable products={filteredProducts} loading={loading} />
 
         {/* Stock Overview Chart Placeholder */}
         <div className="lg:col-span-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0_1px_3px_rgba(0,0,0,0.05)] p-lg flex flex-col">
