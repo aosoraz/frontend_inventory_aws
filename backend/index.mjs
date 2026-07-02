@@ -1,17 +1,22 @@
 import { Hono } from 'hono';
 import { handle } from 'hono/aws-lambda';
-import { cors } from 'hono/cors';
 import { Redis } from '@upstash/redis';
 import { Ratelimit } from '@upstash/ratelimit';
 
 const app = new Hono();
 
 // Enable CORS for all routes
-app.use('*', cors({
-  origin: '*',
-  allowHeaders: ['Content-Type'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-}));
+app.use('*', async (c, next) => {
+  c.header('Access-Control-Allow-Origin', '*');
+  c.header('Access-Control-Allow-Headers', 'Content-Type');
+  c.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+
+  if (c.req.method === 'OPTIONS') {
+    return c.text('', 204);
+  }
+
+  await next();
+});
 
 const DB_API_BASE_URL = process.env.DB_API_BASE_URL || "";
 
