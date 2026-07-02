@@ -1,4 +1,15 @@
+import { Link, useLocation } from 'react-router-dom';
+import { useSearch } from '../hooks/useSearch';
+
 export default function Navbar({ children }) {
+  const location = useLocation();
+  const { query, setQuery } = useSearch();
+
+  const navItems = [
+    { to: '/', icon: 'dashboard', label: 'Dashboard' },
+    { to: '/products', icon: 'inventory_2', label: 'Products' },
+  ];
+
   return (
     <div className="h-full flex overflow-hidden">
       {/* SideNavBar */}
@@ -14,14 +25,23 @@ export default function Navbar({ children }) {
         </div>
         
         <nav className="flex-1 space-y-2">
-          <a className="flex items-center px-4 py-3 rounded-lg bg-secondary dark:bg-secondary-fixed-dim text-on-primary border-l-4 border-primary-container hover:bg-secondary-fixed-variant transition-colors duration-200" href="#">
-            <span className="material-symbols-outlined mr-3" data-icon="dashboard">dashboard</span>
-            <span className="font-body-md text-body-md font-semibold">Dashboard</span>
-          </a>
-          <a className="flex items-center px-4 py-3 rounded-lg text-secondary-fixed-dim hover:bg-secondary-fixed-variant transition-colors duration-200" href="#">
-            <span className="material-symbols-outlined mr-3" data-icon="inventory_2">inventory_2</span>
-            <span className="font-body-md text-body-md">Products</span>
-          </a>
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.to;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`flex items-center px-4 py-3 rounded-lg transition-colors duration-200 ${
+                  isActive
+                    ? 'bg-secondary dark:bg-secondary-fixed-dim text-on-primary border-l-4 border-primary-container'
+                    : 'text-secondary-fixed-dim hover:bg-secondary-fixed-variant'
+                }`}
+              >
+                <span className="material-symbols-outlined mr-3" data-icon={item.icon}>{item.icon}</span>
+                <span className={`font-body-md text-body-md ${isActive ? 'font-semibold' : ''}`}>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
         
         <div className="mt-auto pt-lg border-t border-secondary">
@@ -40,10 +60,18 @@ export default function Navbar({ children }) {
         {/* TopNavBar */}
         <header className="fixed top-0 right-0 left-[var(--spacing-sidebar-width)] h-16 bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline flex items-center justify-between px-xl w-[calc(100%-var(--spacing-sidebar-width))] z-10">
           <div className="flex items-center flex-1">
-            <h2 className="font-h2 text-h2 text-primary font-bold mr-8 hidden md:block">Dashboard</h2>
+            <h2 className="font-h2 text-h2 text-primary font-bold mr-8 hidden md:block">
+              {location.pathname === '/products' ? 'Products' : 'Dashboard'}
+            </h2>
             <div className="relative w-64 max-w-md hidden sm:block">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
-              <input className="w-full pl-10 pr-4 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest focus:ring-2 focus:ring-primary focus:border-transparent font-body-sm text-body-sm outline-none transition-all" placeholder="Search inventory..." type="text" />
+              <input
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest focus:ring-2 focus:ring-primary focus:border-transparent font-body-sm text-body-sm outline-none transition-all"
+                placeholder="Search inventory..."
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
             </div>
           </div>
           <div className="flex items-center space-x-4">

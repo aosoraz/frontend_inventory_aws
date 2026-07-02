@@ -2,11 +2,8 @@ export default function DeleteModal({ isOpen, onClose, onConfirm, isDeleting = f
   if (!isOpen) return null;
 
   return (
-    <>
-      {/* Overlay Backdrop */}
-      <div className="fixed inset-0 bg-on-surface/40 backdrop-blur-sm z-50 transition-opacity flex items-center justify-center p-md">
-      {/* Modal Container */}
-      <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-md overflow-hidden transform transition-all scale-100 opacity-100 flex flex-col items-center p-lg border border-outline-variant/30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 backdrop-blur-sm transition-opacity p-md">
+      <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-md overflow-hidden transform transition-all flex flex-col items-center p-lg border border-outline-variant/30">
         
         {/* Warning Icon */}
         <div className="w-12 h-12 rounded-full bg-error-container flex items-center justify-center mb-md">
@@ -41,6 +38,5 @@ export default function DeleteModal({ isOpen, onClose, onConfirm, isDeleting = f
         </div>
       </div>
     </div>
-    </>
   );
 }

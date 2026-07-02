@@ -49,16 +49,10 @@
   --color-primary-fixed-dim: #b4c5ff;
   --color-outline: #737686;
 
-  --spacing-xl: 32px;
   --spacing-max-content-width: 1440px;
   --spacing-sidebar-width: 260px;
   --spacing-base: 4px;
-  --spacing-lg: 24px;
   --spacing-gutter: 20px;
-  --spacing-xs: 4px;
-  --spacing-md: 16px;
-  --spacing-sm: 8px;
-  --spacing-2xl: 48px;
 
   --font-body-md: "Inter", sans-serif;
   --font-h2: "Inter", sans-serif;
@@ -113,6 +107,15 @@
 }
 
 @layer base {
+  :root {
+    --ui-xs: 4px;
+    --ui-sm: 8px;
+    --ui-md: 16px;
+    --ui-lg: 24px;
+    --ui-xl: 32px;
+    --ui-2xl: 48px;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-on-background);
@@ -126,3 +129,50 @@
     font-variation-settings: 'FILL' 1;
   }
 }
+
+@utility p-xs { padding: var(--ui-xs); }
+@utility p-sm { padding: var(--ui-sm); }
+@utility p-md { padding: var(--ui-md); }
+@utility p-lg { padding: var(--ui-lg); }
+@utility p-xl { padding: var(--ui-xl); }
+
+@utility px-xs { padding-inline: var(--ui-xs); }
+@utility px-sm { padding-inline: var(--ui-sm); }
+@utility px-md { padding-inline: var(--ui-md); }
+@utility px-lg { padding-inline: var(--ui-lg); }
+@utility px-xl { padding-inline: var(--ui-xl); }
+
+@utility py-xs { padding-block: var(--ui-xs); }
+@utility py-sm { padding-block: var(--ui-sm); }
+@utility py-md { padding-block: var(--ui-md); }
+@utility py-lg { padding-block: var(--ui-lg); }
+@utility py-xl { padding-block: var(--ui-xl); }
+
+@utility mb-xs { margin-bottom: var(--ui-xs); }
+@utility mb-sm { margin-bottom: var(--ui-sm); }
+@utility mb-md { margin-bottom: var(--ui-md); }
+@utility mb-lg { margin-bottom: var(--ui-lg); }
+@utility mb-xl { margin-bottom: var(--ui-xl); }
+
+@utility mt-xs { margin-top: var(--ui-xs); }
+@utility mt-sm { margin-top: var(--ui-sm); }
+@utility mt-md { margin-top: var(--ui-md); }
+@utility mt-lg { margin-top: var(--ui-lg); }
+@utility mt-xl { margin-top: var(--ui-xl); }
+
+@utility gap-xs { gap: var(--ui-xs); }
+@utility gap-sm { gap: var(--ui-sm); }
+@utility gap-md { gap: var(--ui-md); }
+@utility gap-lg { gap: var(--ui-lg); }
+@utility gap-xl { gap: var(--ui-xl); }
+
+@utility gap-x-md { column-gap: var(--ui-md); }
+@utility gap-y-lg { row-gap: var(--ui-lg); }
+
+@utility right-sm { right: var(--ui-sm); }
+@utility left-md { left: var(--ui-md); }
+@utility left-sm { left: var(--ui-sm); }
+@utility pr-lg { padding-right: var(--ui-lg); }
+@utility pr-md { padding-right: var(--ui-md); }
+@utility pl-lg { padding-left: var(--ui-lg); }
+@utility pl-xl { padding-left: var(--ui-xl); }
