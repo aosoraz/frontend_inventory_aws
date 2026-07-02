@@ -7,7 +7,11 @@ import { Ratelimit } from '@upstash/ratelimit';
 const app = new Hono();
 
 // Enable CORS for all routes
-app.use('*', cors());
+app.use('*', cors({
+  origin: '*',
+  allowHeaders: ['Content-Type'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+}));
 
 const DB_API_BASE_URL = process.env.DB_API_BASE_URL || "";
 
