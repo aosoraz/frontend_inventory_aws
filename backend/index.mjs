@@ -3,6 +3,7 @@ import { handle } from 'hono/aws-lambda';
 import { Redis } from '@upstash/redis';
 import { Ratelimit } from '@upstash/ratelimit';
 import { cors } from 'hono/cors';
+import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 
 const app = new Hono();
 
@@ -19,6 +20,30 @@ if (!DB_API_BASE_URL) {
   throw new Error("CRITICAL: DB_API_BASE_URL is not defined in environment variables. Please set it before running the server.");
 }
 
+const SNS_TOPIC_ARN = process.env.SNS_TOPIC_ARN;
+
+const snsClient = new SNSClient({ region: "us-east-1" });
+
+
+// Function to publish messages to SNS
+async function publishProductNotification(subject, message) {
+  if (!SNS_TOPIC_ARN) {
+    console.warn("SNS_TOPIC_ARN belum dikonfigurasi.");
+    return;
+  }
+  try {
+    await snsClient.send(
+      new PublishCommand({
+        TopicArn: SNS_TOPIC_ARN,
+        Subject: subject,
+        Message: message
+      })
+    );
+    console.log(`[SNS] ${subject} berhasil dikirim.`);
+  } catch (error) {
+    console.error("[SNS ERROR]", error);
+  }
+}
 // ---------------------------------------------------------
 // REDIS & RATE LIMITER SETUP
 // ---------------------------------------------------------
@@ -41,7 +66,7 @@ app.use('*', async (c, next) => {
   // We are only rate-limiting mutation routes (POST, PUT, DELETE) to protect the DB from spam.
   // GET requests are allowed to pass freely. Remove the 'if' block to rate-limit everything.
   if (['POST', 'PUT', 'DELETE'].includes(c.req.method)) {
-    
+
     const { success, limit, reset, remaining } = await ratelimit.limit(`ratelimit_${clientIp}`);
 
     // Attach standard rate limit headers to the response
@@ -57,7 +82,6 @@ app.use('*', async (c, next) => {
 
   await next();
 });
-
 // ---------------------------------------------------------
 // LOGGING & SANITIZATION MIDDLEWARE
 // ---------------------------------------------------------
@@ -67,12 +91,12 @@ app.use('*', async (c, next) => {
   const method = c.req.method;
   const path = c.req.path;
   const clientIp = c.req.header('x-forwarded-for') || 'unknown';
-  
+
   console.log(`[API GATEWAY IN] Request from Client (${clientIp}): ${method} ${path}`);
   const start = Date.now();
-  
+
   await next();
-  
+
   const ms = Date.now() - start;
   console.log(`[API GATEWAY OUT] Response to Client: ${method} ${path} | Status: ${c.res.status} | Duration: ${ms}ms`);
 });
@@ -113,10 +137,10 @@ app.use('*', async (c, next) => {
 async function fetchDownstream(path, options = {}) {
   const url = `${DB_API_BASE_URL}${path}`;
   const method = options.method || 'GET';
-  
+
   console.log(`[BFF -> DB] Sending request: ${method} ${url}`);
   const start = Date.now();
-  
+
   try {
     const response = await fetch(url, options);
     const ms = Date.now() - start;
@@ -162,13 +186,13 @@ app.get('/products/:id', async (c) => {
 app.post('/products', async (c) => {
   try {
     const body = await c.req.json();
-    
+
     // Business Logic / Validation
     if (!body.ProductName || !body.Category || body.Price === undefined || body.Stock === undefined || !body.Description) {
       console.log(`[BFF VALIDATION FAILED] POST /products - Invalid payload`);
       return c.json({ message: 'Invalid payload. ProductName, Category, Price, Stock, and Description are required.' }, 400);
     }
-    
+
     // Ensure Price and Stock are numbers
     body.Price = Number(body.Price);
     body.Stock = Number(body.Stock);
@@ -180,8 +204,21 @@ app.post('/products', async (c) => {
       },
       body: JSON.stringify(body)
     });
-    
+
     const data = await response.json();
+
+    if (response.ok) {
+      await publishProductNotification(
+        "Produk Baru Ditambahkan",
+        `Produk baru berhasil ditambahkan.
+          Nama Produk : ${data.ProductName}
+          Kategori    : ${data.Category}
+          Harga       : ${data.Price}
+          Stok        : ${data.Stock}
+          Deskripsi   : ${data.Description}`
+      );
+    }
+
     return c.json(data, response.status);
   } catch (error) {
     console.error(`[BFF ERROR] Internal Server Error on ${c.req.method} ${c.req.path}: ${error.message}`);
@@ -200,7 +237,7 @@ app.put('/products/:id', async (c) => {
       console.log(`[BFF VALIDATION FAILED] PUT /products/${id} - Invalid payload`);
       return c.json({ message: 'Invalid payload. ProductName, Category, Price, Stock, and Description are required.' }, 400);
     }
-    
+
     // Ensure Price and Stock are numbers
     body.Price = Number(body.Price);
     body.Stock = Number(body.Stock);
@@ -212,8 +249,20 @@ app.put('/products/:id', async (c) => {
       },
       body: JSON.stringify(body)
     });
-    
+
     const data = await response.json();
+
+    if (response.ok) {
+      await publishProductNotification(
+        "Produk berhasil diedit",
+        `Produk berhasil diperbarui.
+          Nama Produk : ${data.ProductName}
+          Kategori    : ${data.Category}
+          Harga       : ${data.Price}
+          Stok        : ${data.Stock}
+          Deskripsi   : ${data.Description}`
+      );
+    }
     return c.json(data, response.status);
   } catch (error) {
     console.error(`[BFF ERROR] Internal Server Error on ${c.req.method} ${c.req.path}: ${error.message}`);
@@ -228,8 +277,16 @@ app.delete('/products/:id', async (c) => {
     const response = await fetchDownstream(`/products/${id}`, {
       method: 'DELETE'
     });
-    
+
     const data = await response.json();
+
+    if (response.ok) {
+      await publishProductNotification(
+        "🗑️ Produk Berhasil Dihapus",
+        `Produk dengan ID ${id} berhasil dihapus.`
+      );
+    }
+
     return c.json(data, response.status);
   } catch (error) {
     console.error(`[BFF ERROR] Internal Server Error on ${c.req.method} ${c.req.path}: ${error.message}`);

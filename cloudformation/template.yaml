@@ -1,0 +1,522 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  CSA Final Project
+  Fullstack Serverless Architecture
+  Frontend + Backend + Database + SNS
+
+Parameters:
+
+  DeploymentBucket:
+    Type: String
+    Description: S3 Bucket tempat backend.zip dan database-lambda.zip
+
+  BackendZipKey:
+    Type: String
+    Default: backend.zip
+
+  DatabaseZipKey:
+    Type: String
+    Default: database-lambda.zip
+
+  NotificationEmail:
+    Type: String
+    Description: Email penerima notifikasi SNS
+
+  LambdaRoleArn:
+    Type: String
+    Description: ARN LabRole
+
+Resources:
+
+##################################################
+# DynamoDB
+##################################################
+
+  ProductsTable:
+    Type: AWS::DynamoDB::Table
+
+    Properties:
+
+      TableName: Products
+
+      BillingMode: PAY_PER_REQUEST
+
+      AttributeDefinitions:
+
+        - AttributeName: ProductId
+          AttributeType: S
+
+      KeySchema:
+
+        - AttributeName: ProductId
+          KeyType: HASH
+
+##################################################
+# SNS
+##################################################
+
+  ProductNotificationTopic:
+
+    Type: AWS::SNS::Topic
+
+    Properties:
+
+      TopicName: inventory-topic
+
+##################################################
+# SNS Subscription
+##################################################
+
+  ProductSubscription:
+
+    Type: AWS::SNS::Subscription
+
+    Properties:
+
+      TopicArn: !Ref ProductNotificationTopic
+
+      Protocol: email
+
+      Endpoint: !Ref NotificationEmail
+##################################################
+# Backend Lambda
+##################################################
+
+  BackendLambda:
+
+    Type: AWS::Lambda::Function
+
+    Properties:
+
+      FunctionName: products-api-v1
+
+      Runtime: nodejs24.x
+
+      Handler: index.handler
+
+      MemorySize: 128
+
+      Timeout: 3
+
+      Role: !Ref LambdaRoleArn
+
+      Architectures:
+        - x86_64
+
+      Code:
+
+        S3Bucket: !Ref DeploymentBucket
+
+        S3Key: !Ref BackendZipKey
+
+      Environment:
+
+        Variables:
+
+          SNS_TOPIC_ARN: !Ref ProductNotificationTopic
+
+          DB_API_BASE_URL: "https://REPLACE_DATABASE_API.execute-api.us-east-1.amazonaws.com"
+
+##################################################
+# Database Lambda
+##################################################
+
+  DatabaseLambda:
+
+    Type: AWS::Lambda::Function
+
+    Properties:
+
+      FunctionName: database-lambda
+
+      Runtime: nodejs24.x
+
+      Handler: index.handler
+
+      MemorySize: 128
+
+      Timeout: 3
+
+      Role: !Ref LambdaRoleArn
+
+      Architectures:
+        - x86_64
+
+      Code:
+
+        S3Bucket: !Ref DeploymentBucket
+
+        S3Key: !Ref DatabaseZipKey
+
+##################################################
+# Permission Backend Lambda
+##################################################
+
+  BackendLambdaPermission:
+
+    Type: AWS::Lambda::Permission
+
+    Properties:
+
+      Action: lambda:InvokeFunction
+
+      FunctionName: !Ref BackendLambda
+
+      Principal: apigateway.amazonaws.com
+
+##################################################
+# Permission Database Lambda
+##################################################
+
+  DatabaseLambdaPermission:
+
+    Type: AWS::Lambda::Permission
+
+    Properties:
+
+      Action: lambda:InvokeFunction
+
+      FunctionName: !Ref DatabaseLambda
+
+      Principal: apigateway.amazonaws.com
+##################################################
+# HTTP API - Backend
+##################################################
+
+  BackendHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+
+    Properties:
+
+      Name: BackendHttpApi
+
+      ProtocolType: HTTP
+
+##################################################
+# Backend Integration
+##################################################
+
+  BackendIntegration:
+
+    Type: AWS::ApiGatewayV2::Integration
+
+    Properties:
+
+      ApiId: !Ref BackendHttpApi
+
+      IntegrationType: AWS_PROXY
+
+      IntegrationUri: !GetAtt BackendLambda.Arn
+
+      PayloadFormatVersion: "2.0"
+
+##################################################
+# ANY /{proxy+}
+##################################################
+
+  BackendRoute:
+
+    Type: AWS::ApiGatewayV2::Route
+
+    Properties:
+
+      ApiId: !Ref BackendHttpApi
+
+      RouteKey: "ANY /{proxy+}"
+
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref BackendIntegration
+
+##################################################
+# Root Route
+##################################################
+
+  BackendRootRoute:
+
+    Type: AWS::ApiGatewayV2::Route
+
+    Properties:
+
+      ApiId: !Ref BackendHttpApi
+
+      RouteKey: "ANY /"
+
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref BackendIntegration
+
+##################################################
+# Stage
+##################################################
+
+  BackendStage:
+
+    Type: AWS::ApiGatewayV2::Stage
+
+    Properties:
+
+      ApiId: !Ref BackendHttpApi
+
+      StageName: "$default"
+
+      AutoDeploy: true
+
+##################################################
+# HTTP API - Database
+##################################################
+
+  DatabaseHttpApi:
+
+    Type: AWS::ApiGatewayV2::Api
+
+    Properties:
+
+      Name: DatabaseHttpApi
+
+      ProtocolType: HTTP
+
+##################################################
+# Database Integration
+##################################################
+
+  DatabaseIntegration:
+
+    Type: AWS::ApiGatewayV2::Integration
+
+    Properties:
+
+      ApiId: !Ref DatabaseHttpApi
+
+      IntegrationType: AWS_PROXY
+
+      IntegrationUri: !GetAtt DatabaseLambda.Arn
+
+      PayloadFormatVersion: "2.0"
+
+##################################################
+# ANY /{proxy+}
+##################################################
+
+  DatabaseRoute:
+
+    Type: AWS::ApiGatewayV2::Route
+
+    Properties:
+
+      ApiId: !Ref DatabaseHttpApi
+
+      RouteKey: "ANY /{proxy+}"
+
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref DatabaseIntegration
+
+##################################################
+# Root Route
+##################################################
+
+  DatabaseRootRoute:
+
+    Type: AWS::ApiGatewayV2::Route
+
+    Properties:
+
+      ApiId: !Ref DatabaseHttpApi
+
+      RouteKey: "ANY /"
+
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref DatabaseIntegration
+
+##################################################
+# Stage
+##################################################
+
+  DatabaseStage:
+
+    Type: AWS::ApiGatewayV2::Stage
+
+    Properties:
+
+      ApiId: !Ref DatabaseHttpApi
+
+      StageName: "$default"
+
+      AutoDeploy: true
+##################################################
+# HTTP API - Backend
+##################################################
+
+  BackendHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+
+    Properties:
+
+      Name: BackendHttpApi
+
+      ProtocolType: HTTP
+
+##################################################
+# Backend Integration
+##################################################
+
+  BackendIntegration:
+
+    Type: AWS::ApiGatewayV2::Integration
+
+    Properties:
+
+      ApiId: !Ref BackendHttpApi
+
+      IntegrationType: AWS_PROXY
+
+      IntegrationUri: !GetAtt BackendLambda.Arn
+
+      PayloadFormatVersion: "2.0"
+
+##################################################
+# ANY /{proxy+}
+##################################################
+
+  BackendRoute:
+
+    Type: AWS::ApiGatewayV2::Route
+
+    Properties:
+
+      ApiId: !Ref BackendHttpApi
+
+      RouteKey: "ANY /{proxy+}"
+
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref BackendIntegration
+
+##################################################
+# Root Route
+##################################################
+
+  BackendRootRoute:
+
+    Type: AWS::ApiGatewayV2::Route
+
+    Properties:
+
+      ApiId: !Ref BackendHttpApi
+
+      RouteKey: "ANY /"
+
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref BackendIntegration
+
+##################################################
+# Stage
+##################################################
+
+  BackendStage:
+
+    Type: AWS::ApiGatewayV2::Stage
+
+    Properties:
+
+      ApiId: !Ref BackendHttpApi
+
+      StageName: "$default"
+
+      AutoDeploy: true
+
+##################################################
+# HTTP API - Database
+##################################################
+
+  DatabaseHttpApi:
+
+    Type: AWS::ApiGatewayV2::Api
+
+    Properties:
+
+      Name: DatabaseHttpApi
+
+      ProtocolType: HTTP
+
+##################################################
+# Database Integration
+##################################################
+
+  DatabaseIntegration:
+
+    Type: AWS::ApiGatewayV2::Integration
+
+    Properties:
+
+      ApiId: !Ref DatabaseHttpApi
+
+      IntegrationType: AWS_PROXY
+
+      IntegrationUri: !GetAtt DatabaseLambda.Arn
+
+      PayloadFormatVersion: "2.0"
+
+##################################################
+# ANY /{proxy+}
+##################################################
+
+  DatabaseRoute:
+
+    Type: AWS::ApiGatewayV2::Route
+
+    Properties:
+
+      ApiId: !Ref DatabaseHttpApi
+
+      RouteKey: "ANY /{proxy+}"
+
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref DatabaseIntegration
+
+##################################################
+# Root Route
+##################################################
+
+  DatabaseRootRoute:
+
+    Type: AWS::ApiGatewayV2::Route
+
+    Properties:
+
+      ApiId: !Ref DatabaseHttpApi
+
+      RouteKey: "ANY /"
+
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref DatabaseIntegration
+
+##################################################
+# Stage
+##################################################
+
+  DatabaseStage:
+
+    Type: AWS::ApiGatewayV2::Stage
+
+    Properties:
+
+      ApiId: !Ref DatabaseHttpApi
+
+      StageName: "$default"
+
+      AutoDeploy: true
